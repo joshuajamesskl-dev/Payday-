@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#E8573A" />
+  <meta name="description" content="Personal budgeting app for Jamaican salaried professionals" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PayDay JM" />
+  <title>PayDay JM</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+  <header class="app-header">
+    <div class="app-logo">PayDay <span>JM</span></div>
+    <div class="header-actions">
+      <button class="icon-btn" title="Notifications" onclick="checkAlerts()">🔔</button>
+    </div>
+  </header>
+
+  <main id="page-content"></main>
+
+  <!-- FAB with label -->
+  <div class="fab-wrap" id="fab-wrap" style="display:none;">
+    <span class="fab-label" id="fab-label"></span>
+    <button class="fab" id="fab" onclick="fabAction()" aria-label="Add item">＋</button>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-item" data-page="bills"     onclick="navigate('bills')"><span class="nav-icon">📋</span>Bills</button>
+    <button class="nav-item" data-page="spending"  onclick="navigate('spending')"><span class="nav-icon">📊</span>Spending</button>
+    <button class="nav-item" data-page="goals"     onclick="navigate('goals')"><span class="nav-icon">🎯</span>Goals</button>
+    <button class="nav-item" data-page="settings"  onclick="navigate('settings')"><span class="nav-icon">⚙️</span>Settings</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── MODAL: Alerts ── -->
+<div class="modal-backdrop" id="modal-alerts">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Bill Alerts</div>
+    <div id="alerts-content"></div>
+    <button class="btn btn-ghost btn-block" style="margin-top:16px;" onclick="closeModal('modal-alerts')">Close</button>
+  </div>
+</div>
+
+<!-- ── MODAL: Quick Salary Edit ── -->
+<div class="modal-backdrop" id="modal-salary-quick">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Update Salary</div>
+    <div class="form-group">
+      <label class="form-label">Monthly Gross (J$)</label>
+      <div class="input-prefix">
+        <input class="form-input" id="salary-quick-val" type="number" min="0" step="1000" />
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1" onclick="saveSalaryQuick()">Save</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-salary-quick')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Bill ── -->
+<div class="modal-backdrop" id="modal-bill">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Bill</div>
+    <input type="hidden" id="bill-edit-id" />
+    <form onsubmit="addBill(event)">
+      <div class="form-group">
+        <label class="form-label">Bill Name</label>
+        <input class="form-input" id="bill-name" type="text" placeholder="e.g. JPS, Rent, Phone" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Icon (emoji)</label>
+        <input class="form-input" id="bill-icon" type="text" placeholder="💡" maxlength="4" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="bill-amount" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due Day of Month</label>
+        <input class="form-input" id="bill-due" type="number" min="1" max="31" placeholder="e.g. 15" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Frequency</label>
+        <select class="form-select" id="bill-freq">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="annual">Annual</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">Save Bill</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-bill')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Debt ── -->
+<div class="modal-backdrop" id="modal-debt">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Debt</div>
+    <input type="hidden" id="debt-edit-id" />
+    <form onsubmit="addDebt(event)">
+      <div class="form-group">
+        <label class="form-label">Debt Name</label>
+        <input class="form-input" id="debt-name" type="text" placeholder="e.g. Credit Card, Loan" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Current Balance (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="debt-balance" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Minimum Monthly Payment (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="debt-minpay" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Annual Interest Rate (%)</label>
+        <input class="form-input" id="debt-rate" type="number" min="0" step="0.1" placeholder="e.g. 24.5" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Due Day</label>
+        <input class="form-input" id="debt-due" type="number" min="1" max="31" placeholder="e.g. 22" />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">Save Debt</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-debt')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── MODAL: Log/Edit Expense ── -->
+<div class="modal-backdrop" id="modal-expense">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Log Expense</div>
+    <input type="hidden" id="exp-edit-id" />
+    <!-- Quick templates -->
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:4px;">
+      <button class="template-chip" onclick="applyTemplate({category:'Groceries',note:'Hi-Lo supermarket'})">🛒 Groceries</button>
+      <button class="template-chip" onclick="applyTemplate({category:'Transport',note:'Bus/taxi fares'})">🚌 Commute</button>
+      <button class="template-chip" onclick="applyTemplate({category:'Dining',note:'Lunch'})">🍽️ Lunch</button>
+      <button class="template-chip" onclick="applyTemplate({category:'Transport',note:'Petrol'})">⛽ Gas</button>
+      <button class="template-chip" onclick="applyTemplate({category:'Health',note:'Medication'})">💊 Health</button>
+    </div>
+    <form onsubmit="addExpense(event)">
+      <div class="form-group">
+        <label class="form-label">Amount (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="exp-amount" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select" id="exp-cat" required>
+          <option value="">Select category</option>
+          <option>Groceries</option><option>Transport</option><option>Dining</option>
+          <option>Utilities</option><option>Entertainment</option><option>Health</option>
+          <option>Education</option><option>Clothing</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <input class="form-input" id="exp-note" type="text" placeholder="e.g. Hi-Lo supermarket" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" id="exp-date" type="date" required />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">Log Expense</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-expense')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── MODAL: Add/Edit Goal ── -->
+<div class="modal-backdrop" id="modal-goal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New Savings Goal</div>
+    <input type="hidden" id="goal-edit-id" />
+    <form onsubmit="addGoal(event)">
+      <div class="form-group">
+        <label class="form-label">Goal Name</label>
+        <input class="form-input" id="goal-name" type="text" placeholder="e.g. Emergency Fund, Vacation" required />
+      </div>
+      <div style="display:flex;gap:10px;">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Icon (emoji)</label>
+          <input class="form-input" id="goal-icon" type="text" placeholder="🎯" maxlength="4" value="🎯" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Colour</label>
+          <input class="form-input" id="goal-color" type="color" value="#c8a96e" style="height:44px;padding:4px 8px;cursor:pointer;" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Amount (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="goal-target" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Already Saved (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="goal-saved" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Date</label>
+        <input class="form-input" id="goal-date" type="date" required />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">Create Goal</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-goal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── MODAL: Add Savings to Goal ── -->
+<div class="modal-backdrop" id="modal-savings">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="savings-modal-title">Add Funds</div>
+    <input type="hidden" id="savings-goal-id" />
+    <form onsubmit="addSavings(event)">
+      <div class="form-group">
+        <label class="form-label">Amount to Add (J$)</label>
+        <div class="input-prefix">
+          <input class="form-input" id="savings-amount" type="number" min="0" step="0.01" placeholder="0.00" required />
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1">Add Funds</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-savings')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  function applyTemplate(t) {
+    if (t.category) document.getElementById('exp-cat').value  = t.category;
+    if (t.note)     document.getElementById('exp-note').value = t.note;
+  }
+  // Wire FAB wrap visibility alongside the FAB button
+  const _origNavigate = navigate;
+  // Override FAB display to use the wrap
+  const fabWrap = document.getElementById('fab-wrap');
+  const origFab = document.getElementById('fab');
+  if (origFab && fabWrap) {
+    const obs = new MutationObserver(() => {
+      fabWrap.style.display = origFab.style.display === 'none' || origFab.style.display === '' ? 'none' : 'flex';
+    });
+    obs.observe(origFab, { attributes: true, attributeFilter: ['style'] });
+  }
+</script>
+</body>
+</html>
